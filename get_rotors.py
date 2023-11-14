@@ -1,4 +1,5 @@
 import os
+import shutil
 from get_geometry import *
 
 ## -- FUNCTION CALLS AND MAIN BLOCKS -- ##
@@ -62,6 +63,50 @@ for file in files:
         os.chdir(current_dir)
 
         # prints results
-        print_results(zmat_file, zmat, rotor_dihedrals, rotors, bond_graph)
+        # print_results(zmat_file, zmat, rotor_dihedrals, rotors, bond_graph)
 
+#--------------------- Below Peice Added by Pray Shah -----------------------#
+
+run_shell_script = """#!/bin/bash
+#SBATCH --partition=amilan
+#SBATCH --qos=normal
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=32
+#SBATCH --time=24:00:00
+#SBATCH --job-name=rotors
+#SBATCH --account=ucb273_peak1
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=prsh1291@colorado.edu
+
+module purge
+module load "gaussian/16_avx2"
+
+FILES=*.gjf
+for f in $FILES
+do
+ name=$(echo "$f" | cut -f 1 -d '.')
+ g16 <$name.gjf> $name.log
+  echo "Processing $name file..."
+done
+
+date
+"""
+
+for dirs in os.listdir():
+    if dirs.endswith('_New_Input_Files'):
+        RotorFilesPath = os.path.abspath(dirs)
+
+RotorNewDir = []
+
+for fileName in os.listdir(RotorFilesPath):
+    os.makedirs(fileName.split('_')[-2])
+    shutil.move(os.path.join(RotorFilesPath, fileName), fileName.split("_")[-2])
+    ShellFilePath = os.path.join(fileName.split("_")[-2], 'run_all_gjfs_series.sh')
+    f = open(ShellFilePath, 'w')
+    f.writelines(run_shell_script)
+    f.close()
+
+os.rmdir(RotorFilesPath)
+
+print("\nRotor job input files and shell scripts are printed\n")
 ## -- END FUNCTION CALLS AND MAIN BLOCKS -- ##
